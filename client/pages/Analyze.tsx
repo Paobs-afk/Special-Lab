@@ -100,10 +100,18 @@ export default function Analyze() {
       const response = await fetch("/api/analyze", {
         method: "POST",
         body: formData,
+        headers: {
+          // Don't set Content-Type header - let browser set it with boundary for multipart/form-data
+        },
       });
 
       if (!response.ok) {
-        throw new Error(`Analysis failed: ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error ||
+          errorData.message ||
+          `Analysis failed: ${response.statusText}`
+        );
       }
 
       const result = await response.json();
@@ -111,10 +119,11 @@ export default function Analyze() {
       // Pass results to results page via state
       navigate("/results", { state: { analysis: result } });
     } catch (err) {
+      console.error("Analysis error:", err);
       setError(
         err instanceof Error
           ? err.message
-          : "Failed to analyze documents. Please try again."
+          : "Failed to analyze documents. Please check your files and try again."
       );
       setIsAnalyzing(false);
     }

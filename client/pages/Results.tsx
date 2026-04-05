@@ -235,17 +235,20 @@ export default function Results() {
                 </div>
                 <div>
                   <div className="flex justify-between text-xs text-muted-foreground mb-2">
-                    <span>TF-IDF Score</span>
+                    <span>Relevance</span>
                     <span className="font-semibold text-primary">
-                      {term.score.toFixed(2)}
+                      {term.relevance}%
                     </span>
                   </div>
                   <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
                     <div
                       className="h-full bg-gradient-to-r from-primary to-accent"
-                      style={{ width: `${Math.min(100, term.score * 200)}%` }}
+                      style={{ width: `${Math.min(100, term.relevance)}%` }}
                     ></div>
                   </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    TF-IDF: {term.score.toFixed(4)}
+                  </p>
                 </div>
               </div>
             ))}

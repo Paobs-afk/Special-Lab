@@ -61,7 +61,8 @@ function calculateTFIDF(
 
   for (const [term, tfValue] of tf.entries()) {
     const idfValue = idf.get(term) || 0;
-    tfidf.set(term, tfValue * idfValue);
+    // Add 1 to IDF to avoid zero values (common practice)
+    tfidf.set(term, tfValue * (idfValue + 1));
   }
 
   return tfidf;
@@ -152,16 +153,19 @@ export function analyzeDocuments(
     const tfidf = calculateTFIDF(doc.tokens, idf);
     const topTerms = getTopTerms(tfidf, 10);
 
-    // Calculate overall score (average TF-IDF)
-    const scores = Array.from(tfidf.values());
-    const overallScore = scores.length > 0 ? scores.reduce((a, b) => a + b) / scores.length : 0;
+    // Calculate overall score based on document's TF-IDF vector magnitude
+    const allScores = Array.from(tfidf.values());
+    const magnitude = calculateMagnitude(tfidf);
+
+    // Scale magnitude to 0-100, max magnitude for a typical document is around 1-5
+    const overallScore = Math.min(100, Math.round((magnitude / 5) * 100));
 
     return {
       filename: doc.filename,
       tokens: doc.tokens,
       tfidf,
       topTerms,
-      overallScore: Math.round(overallScore * 1000) / 10, // 0-100 scale
+      overallScore: Math.max(1, overallScore), // Ensure at least 1% score
     };
   });
 
@@ -181,14 +185,27 @@ export function analyzeDocuments(
     }
   }
 
-  // Get global top terms across all documents
+  // Get global top terms across all documents (normalized)
   const globalTFIDF = new Map<string, number>();
   for (const doc of documentAnalyses) {
     for (const [term, score] of doc.tfidf.entries()) {
       globalTFIDF.set(term, (globalTFIDF.get(term) || 0) + score);
     }
   }
-  const globalTopTerms = getTopTerms(globalTFIDF, 15);
+
+  // Get top terms before normalization to preserve scores
+  const allTerms = Array.from(globalTFIDF.entries())
+    .map(([term, score]) => ({ term, score }))
+    .sort((a, b) => b.score - a.score);
+
+  // Normalize scores to 0-1 range based on max score
+  const maxScore = allTerms.length > 0 ? allTerms[0].score : 1;
+  const globalTopTerms = allTerms
+    .slice(0, 15)
+    .map(({ term, score }) => ({
+      term,
+      score: maxScore > 0 ? score / maxScore : 0,
+    }));
 
   return {
     documents: documentAnalyses,
